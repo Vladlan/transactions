@@ -27,6 +27,7 @@ export function App() {
     createTransaction,
     updateTransaction,
     deleteTransaction,
+    scrollToId,
     PAGE_SIZE,
   } = useTransactions();
 
@@ -134,6 +135,27 @@ export function App() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Apply
           </Button>
+          <div className="flex items-center gap-2 border-l pl-3 ml-1">
+            <Input
+              placeholder="Scroll to ID"
+              className="w-32"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const id = parseInt(e.currentTarget.value);
+                  if (!isNaN(id)) {
+                    const target = e.currentTarget;
+                    scrollToId(id)
+                      .then(() => {
+                        target.value = "";
+                      })
+                      .catch(() => {
+                        // Error is handled by hook
+                      });
+                  }
+                }
+              }}
+            />
+          </div>
           <div className="ml-auto">
             <Button onClick={handleCreate}>
               <Plus className="h-4 w-4 mr-2" />

@@ -6,9 +6,12 @@ import {
   updateSchema,
   listQuerySchema,
   countQuerySchema,
+  findIndexQuerySchema,
   listTransactions,
   countTransactions,
+  findRowIndex,
   getTransaction,
+
   createTransaction,
   updateTransaction,
   deleteTransaction,
@@ -16,7 +19,8 @@ import {
 
 const messageSchema = z.object({
   id: z.string().or(z.number()).optional(),
-  action: z.enum(["list", "count", "get", "create", "update", "delete"]),
+  action: z.enum(["list", "count", "findIndex", "get", "create", "update", "delete"]),
+
   params: z.record(z.unknown()).optional(),
 });
 
@@ -69,6 +73,17 @@ async function handleMessage(ws: WebSocket, raw: string) {
         }
         const count = await countTransactions(parsed.data);
         send(ws, id, { data: { count } });
+        return;
+      }
+
+      case "findIndex": {
+        const parsed = findIndexQuerySchema.safeParse(params ?? {});
+        if (!parsed.success) {
+          send(ws, id, { error: parsed.error.flatten() });
+          return;
+        }
+        const index = await findRowIndex(parsed.data);
+        send(ws, id, { data: { index } });
         return;
       }
 

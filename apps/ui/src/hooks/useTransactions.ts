@@ -121,6 +121,48 @@ export function useTransactions() {
     [request, refreshGrid],
   );
 
+  const scrollToId = useCallback(
+    async (id: number) => {
+      const api = gridApiRef.current;
+      if (!api) return;
+
+      // 1. Try to find in cache first
+      const node = api.getRowNode(String(id));
+      if (node) {
+        api.ensureNodeVisible(node, "middle");
+        api.flashCells({ rowNodes: [node] });
+        return;
+      }
+
+      // 2. Not in cache, ask backend for index
+      try {
+        const columnState = api.getColumnState();
+        const sortModel = columnState.find((s) => s.sort);
+
+        const { index } = await request<{ index: number }>("findIndex", {
+          id,
+          ...filtersRef.current,
+          ...(sortModel && { sort_field: sortModel.colId, sort_direction: sortModel.sort }),
+        } as unknown as Record<string, unknown>);
+
+        if (index !== -1) {
+          api.ensureIndexVisible(index, "middle");
+          // Flashing after load is tricky with infinite model, but we can try small delay
+          setTimeout(() => {
+            const newNode = api.getRowNode(String(id));
+            if (newNode) api.flashCells({ rowNodes: [newNode] });
+          }, 500);
+        } else {
+          throw new Error("Transaction not found in current view");
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+        throw err;
+      }
+    },
+    [request],
+  );
+
   return {
     error,
     totalCount,
@@ -131,6 +173,7 @@ export function useTransactions() {
     createTransaction,
     updateTransaction,
     deleteTransaction,
+    scrollToId,
     PAGE_SIZE,
   };
 }

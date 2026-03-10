@@ -1,7 +1,6 @@
 import { pool } from "./pool.js";
 
-const TOTAL_ROWS = 1_000_000;
-const BATCH_SIZE = 9_000; // 9000 × 7 params = 63000, under PostgreSQL's 65535 limit
+const TOTAL_ROWS = 10_000_000;
 
 const ACCOUNT_IDS = Array.from({ length: 200 }, (_, i) => `acc_${String(i + 1).padStart(4, "0")}`);
 const TYPES = ["credit", "debit"] as const;

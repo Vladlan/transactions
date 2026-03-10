@@ -62,6 +62,11 @@ export const listQuerySchema = z.object({
   sort_direction: z.enum(["asc", "desc"]).optional(),
 });
 
+export const findIndexQuerySchema = listQuerySchema.extend({
+  id: z.coerce.number(),
+});
+
+
 export async function listTransactions(query: z.infer<typeof listQuerySchema>) {
   const { account_id, type, limit, offset, sort_field, sort_direction } = query;
   const conditions: string[] = [];
@@ -114,6 +119,57 @@ export async function countTransactions(query: z.infer<typeof countQuerySchema>)
 
   return rows[0].count as number;
 }
+
+export async function findRowIndex(query: z.infer<typeof findIndexQuerySchema>) {
+  const { id, account_id, type, sort_field = "id", sort_direction = "desc" } = query;
+  
+  // First check if the transaction exists and get its values for the sort field
+  const { rows: txRows } = await pool.query(
+    `SELECT * FROM transactions WHERE id = $1`,
+    [id]
+  );
+  
+  if (txRows.length === 0) return -1;
+  const targetTx = txRows[0];
+  
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (account_id) {
+    params.push(account_id);
+    conditions.push(`account_id = $${params.length}`);
+  }
+  if (type) {
+    params.push(type);
+    conditions.push(`type = $${params.length}`);
+  }
+
+  // We need to count how many rows come BEFORE this one in the sort order
+  const isDesc = sort_direction.toLowerCase() === "desc";
+  const op = isDesc ? ">" : "<";
+  
+  // For simplicity and performance, if sorting by ID, we just count based on ID
+  if (sort_field === "id") {
+    params.push(id);
+    conditions.push(`id ${op} $${params.length}`);
+  } else {
+    // Complex sort: (field > val) OR (field = val AND id > target_id)
+    const val = targetTx[sort_field];
+    params.push(val, id);
+    const valIdx = params.length - 1;
+    const idIdx = params.length;
+    conditions.push(`(${sort_field} ${op} $${valIdx} OR (${sort_field} = $${valIdx} AND id ${op} $${idIdx}))`);
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const { rows } = await pool.query(
+    `SELECT count(*)::int AS count FROM transactions ${where}`,
+    params,
+  );
+
+  return rows[0].count as number;
+}
+
 
 export async function getTransaction(id: string) {
   const { rows } = await pool.query(
