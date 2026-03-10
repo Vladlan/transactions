@@ -93,6 +93,7 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
           return params.value;
         },
         pinned: "left",
+        sort: "desc",
       },
       { field: "account_id", headerName: "Account", width: 140, pinned: "left" },
       {

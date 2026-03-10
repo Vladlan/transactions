@@ -77,7 +77,7 @@ export async function listTransactions(query: z.infer<typeof listQuerySchema>) {
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
-  const orderBy = sort_field ? `${sort_field} ${sort_direction ?? "asc"}` : "created_at DESC";
+  const orderBy = sort_field ? `${sort_field} ${sort_direction ?? "asc"}` : "id DESC";
   params.push(limit, offset);
 
   const { rows } = await pool.query(
