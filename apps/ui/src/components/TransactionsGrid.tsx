@@ -83,6 +83,7 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
         field: "id",
         headerName: "ID",
         width: 80,
+        minWidth: 112,
         type: "rightAligned",
         colSpan: (params) => (params.node?.rowPinned ? 8 : 1),
         cellRenderer: (params: ICellRendererParams<Transaction>) => {
