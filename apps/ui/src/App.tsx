@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, RefreshCw, Pencil } from "lucide-react";
+import { Plus, RefreshCw, Pencil, Trash2 } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import type { Transaction } from "./types/transaction";
 import type { GridReadyEvent, IDatasource } from "ag-grid-community";
@@ -76,18 +76,21 @@ export function App() {
     setDialogOpen(true);
   }, []);
 
-  const handleDelete = useCallback(
-    async (id: number) => {
-      try {
-        await deleteTransaction(id);
-        clearSelection();
-        toast.success("Transaction deleted");
-      } catch {
-        toast.error("Failed to delete transaction");
+  const handleDeleteSelected = useCallback(async () => {
+    if (selectedRows.length === 0) return;
+    if (!confirm(`Are you sure you want to delete ${selectedRows.length} transactions?`)) return;
+
+    try {
+      // No bulk delete endpoint, loop for now
+      for (const tx of selectedRows) {
+        await deleteTransaction(tx.id);
       }
-    },
-    [deleteTransaction],
-  );
+      clearSelection();
+      toast.success(`${selectedRows.length} transactions deleted`);
+    } catch {
+      toast.error("Failed to delete some transactions");
+    }
+  }, [selectedRows, deleteTransaction, clearSelection]);
 
   const handleCreateSubmit = useCallback(
     async (params: Parameters<typeof createTransaction>[0]) => {
@@ -162,6 +165,14 @@ export function App() {
           </div>
           <div className="ml-auto flex items-center gap-2">
             <Button
+              variant="destructive"
+              disabled={selectedRows.length === 0}
+              onClick={handleDeleteSelected}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Transactions
+            </Button>
+            <Button
               variant="secondary"
               disabled={selectedRows.length === 0}
               onClick={() => {
@@ -188,7 +199,6 @@ export function App() {
           cacheBlockSize={PAGE_SIZE}
           totalCount={totalCount}
           onUpdate={handleUpdateSubmit}
-          onDelete={handleDelete}
           onEdit={handleEdit}
           onSelectionChanged={setSelectedRows}
           onGridReady={handleGridReady}

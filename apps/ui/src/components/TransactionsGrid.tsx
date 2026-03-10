@@ -12,7 +12,7 @@ import {
 } from "ag-grid-community";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Trash2, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import type { Transaction, UpdateParams } from "@/types/transaction";
 
 ModuleRegistry.registerModules([AllCommunityModule, InfiniteRowModelModule]);
@@ -22,7 +22,6 @@ interface Props {
   cacheBlockSize: number;
   totalCount: number | null;
   onUpdate: (params: UpdateParams) => Promise<void>;
-  onDelete: (id: number) => Promise<void>;
   onEdit: (transaction: Transaction) => void;
   onSelectionChanged: (selectedRows: Transaction[]) => void;
   onGridReady: (event: GridReadyEvent) => void;
@@ -38,24 +37,9 @@ function TypeBadge(params: ICellRendererParams<Transaction>) {
   );
 }
 
-function ActionsCellRenderer(
-  params: ICellRendererParams<Transaction> & {
-    onDelete: (id: number) => void;
-  },
-) {
-  if (params.node.rowPinned) return null;
-  const tx = params.data;
-  if (!tx) return null;
-  return (
-    <div className="flex items-center gap-1 h-full">
-      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => params.onDelete(tx.id)}>
-        <Trash2 className="h-3.5 w-3.5" />
-      </Button>
-    </div>
-  );
-}
+// No per-row actions anymore
 
-export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpdate, onDelete, onEdit, onSelectionChanged: onSelectionChangedProp, onGridReady }: Props) {
+export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpdate, onSelectionChanged: onSelectionChangedProp, onGridReady }: Props) {
   const pinnedBottomRowData = useMemo(
     () =>
       totalCount !== null
@@ -181,16 +165,8 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
         width: 180,
         valueFormatter: (p) => (p.value ? new Date(p.value as string).toLocaleString() : ""),
       },
-      {
-        headerName: "",
-        width: 60,
-        cellRenderer: ActionsCellRenderer,
-        cellRendererParams: { onDelete },
-        sortable: false,
-        pinned: "right",
-      },
     ],
-    [onDelete],
+    [],
   );
 
   const defaultColDef = useMemo<ColDef>(
