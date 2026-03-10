@@ -103,7 +103,7 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="container mx-auto py-8 px-4">
+      <div className="w-full py-8 px-4 md:px-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">Transactions</h1>
@@ -111,10 +111,6 @@ export function App() {
               {isConnected ? "Connected" : "Disconnected"}
             </Badge>
           </div>
-          <Button onClick={handleCreate}>
-            <Plus className="h-4 w-4 mr-2" />
-            New Transaction
-          </Button>
         </div>
 
         <div className="flex items-center gap-3 mb-4">
@@ -138,6 +134,12 @@ export function App() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Apply
           </Button>
+          <div className="ml-auto">
+            <Button onClick={handleCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              New Transaction
+            </Button>
+          </div>
         </div>
 
         <TransactionsGrid

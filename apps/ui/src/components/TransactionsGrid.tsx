@@ -113,9 +113,9 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
       },
       { field: "currency", headerName: "Currency", width: 100 },
       { field: "status", headerName: "Status", width: 120 },
-      { field: "category", headerName: "Category", width: 140 },
-      { field: "merchant_name", headerName: "Merchant", width: 180 },
-      { field: "description", headerName: "Description", width: 250 },
+      { field: "category", headerName: "Category", width: 140, flex: 1, minWidth: 120 },
+      { field: "merchant_name", headerName: "Merchant", width: 180, flex: 1.5, minWidth: 150 },
+      { field: "description", headerName: "Description", width: 250, flex: 2, minWidth: 200 },
       {
         field: "transaction_date",
         headerName: "Tx Date",
@@ -152,7 +152,7 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
       { field: "fee_amount", headerName: "Fee", type: "rightAligned", width: 100 },
       { field: "tax_amount", headerName: "Tax", type: "rightAligned", width: 100 },
       { field: "is_recurring", headerName: "Recur?", width: 100, cellRenderer: (p: ICellRendererParams<Transaction>) => (p.value ? "✅" : "") },
-      { field: "counterparty_name", headerName: "Counterparty", width: 180 },
+      { field: "counterparty_name", headerName: "Counterparty", width: 180, flex: 1.5, minWidth: 150 },
       { field: "counterparty_account_number", headerName: "C-Party Acc", width: 160 },
       { field: "counterparty_bank_code", headerName: "C-Party BIC", width: 140 },
       { field: "statement_period", headerName: "Stmt Period", width: 120 },
@@ -161,7 +161,7 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
       { field: "risk_score", headerName: "Risk", width: 100 },
       { field: "reference_number", headerName: "Ref #", width: 180 },
       { field: "merchant_category_code", headerName: "MCC", width: 80 },
-      { field: "notes", headerName: "Notes", width: 200 },
+      { field: "notes", headerName: "Notes", width: 200, flex: 1.5, minWidth: 150 },
       {
         field: "created_at",
         headerName: "Created",
@@ -196,7 +196,7 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
   );
 
   return (
-    <div className="ag-theme-alpine w-full" style={{ height: 600 }}>
+    <div className="ag-theme-alpine w-full" style={{ height: "calc(100vh - 220px)", minHeight: 400 }}>
       <AgGridReact<Transaction>
         rowModelType="infinite"
         datasource={datasource}
