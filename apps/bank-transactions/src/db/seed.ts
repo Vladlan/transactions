@@ -57,6 +57,14 @@ const DESCRIPTION_TEMPLATES = [
 
 const REFERENCE_PREFIXES = ["REF", "TXN", "INV", "ORD", "PMT"];
 
+const STATUSES = ["pending", "completed", "failed", "cancelled"];
+const CATEGORIES = ["Shopping", "Travel", "Food & Drink", "Health", "Grocery", "Utilities", "Salary", "Rent", "Insurance", "Entertainment"];
+const PAYMENT_METHODS = ["credit_card", "debit_card", "bank_transfer", "mobile_pay", "atm", "check"];
+const CARD_NETWORKS = ["VISA", "MASTERCARD", "AMEX", "DISCOVER"];
+const CITIES = ["New York", "London", "London", "Tokyo", "Berlin", "Paris", "Sydney", "Toronto", "Dubai", "Singapore"];
+const COUNTRIES = ["USA", "GBR", "JPN", "DEU", "FRA", "AUS", "CAN", "ARE", "SGP"];
+const CHANNELS = ["online", "mobile", "atm", "branch"];
+
 function randomItem<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]!;
 }
@@ -128,35 +136,88 @@ async function seed() {
 
   let inserted = 0;
 
+  const COLUMN_NAMES = [
+    "account_id", "type", "amount", "currency", "description", "created_at", "updated_at",
+    "status", "category", "merchant_name", "merchant_category_code", "reference_number",
+    "transaction_date", "value_date", "original_amount", "original_currency", "exchange_rate",
+    "fee_amount", "tax_amount", "payment_method", "card_last4", "card_network", "location_city",
+    "location_country", "is_recurring", "original_description", "counterparty_name",
+    "counterparty_account_number", "counterparty_bank_code", "balance_after", "statement_period",
+    "metadata", "auth_code", "channel", "risk_score", "labels", "notes", "parent_transaction_id",
+    "reconciliation_id"
+  ];
+  const COL_COUNT = COLUMN_NAMES.length;
+
   while (inserted < TOTAL_ROWS) {
-    const batchSize = Math.min(BATCH_SIZE, TOTAL_ROWS - inserted);
+    const batchSize = Math.min(Math.floor(65535 / COL_COUNT), TOTAL_ROWS - inserted);
     const values: string[] = [];
     const params: unknown[] = [];
 
     for (let i = 0; i < batchSize; i++) {
-      const offset = i * 7;
+      const offset = i * COL_COUNT;
       const date = randomDate();
-      // updated_at is sometimes slightly after created_at
-      const updatedAt = Math.random() < 0.15
+      const updated_at = Math.random() < 0.15
         ? new Date(date.getTime() + Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000))
         : date;
+      
+      const amount = randomAmount();
+      const currency = randomItem(CURRENCY_POOL);
+      const isForex = Math.random() < 0.2;
+      const original_currency = isForex ? randomItem(CURRENCY_POOL.filter(c => c !== currency)) : currency;
+      const exchange_rate = isForex ? 0.8 + Math.random() * 0.4 : 1.0;
+      const original_amount = Math.round(amount * exchange_rate * 100) / 100;
+      const fee = Math.random() < 0.3 ? Math.round(amount * 0.01 * 100) / 100 : 0;
+      const tax = Math.random() < 0.5 ? Math.round(amount * 0.05 * 100) / 100 : 0;
 
-      params.push(
+      const txParams = [
         randomItem(ACCOUNT_IDS),
         randomItem(TYPES),
-        randomAmount(),
-        randomItem(CURRENCY_POOL),
+        amount,
+        currency,
         randomDescription(),
         date,
-        updatedAt,
-      );
-      values.push(
-        `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5}, $${offset + 6}, $${offset + 7})`,
-      );
+        updated_at,
+        randomItem(STATUSES),
+        randomItem(CATEGORIES),
+        randomItem(MERCHANTS),
+        Math.floor(1000 + Math.random() * 9000).toString(),
+        randomReference(),
+        date,
+        new Date(date.getTime() + 24 * 60 * 60 * 1000), // value_date is often next day
+        original_amount,
+        original_currency,
+        exchange_rate,
+        fee,
+        tax,
+        randomItem(PAYMENT_METHODS),
+        Math.floor(1000 + Math.random() * 9000).toString(),
+        randomItem(CARD_NETWORKS),
+        randomItem(CITIES),
+        randomItem(COUNTRIES),
+        Math.random() < 0.1,
+        "Original unformatted description",
+        `Counterparty ${Math.floor(Math.random() * 100)}`,
+        `ACC-${Math.floor(10000000 + Math.random() * 90000000)}`,
+        `SW-${Math.floor(100000 + Math.random() * 900000)}`,
+        Math.round((5000 + Math.random() * 10000) * 100) / 100,
+        `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+        JSON.stringify({ ip: "127.0.0.1", device: "iphone" }),
+        `AUTH-${Math.floor(100000 + Math.random() * 900000)}`,
+        randomItem(CHANNELS),
+        Math.round(Math.random() * 100 * 100) / 100,
+        ["finance", "automated"],
+        "Random note",
+        null, // parent_transaction_id
+        `REC-${Math.floor(1000000 + Math.random() * 9000000)}`
+      ];
+
+      params.push(...txParams);
+      const placeHolders = txParams.map((_, idx) => `$${offset + idx + 1}`).join(", ");
+      values.push(`(${placeHolders})`);
     }
 
     await pool.query(
-      `INSERT INTO transactions (account_id, type, amount, currency, description, created_at, updated_at)
+      `INSERT INTO transactions (${COLUMN_NAMES.join(", ")})
        VALUES ${values.join(", ")}`,
       params,
     );

@@ -7,6 +7,38 @@ export const createSchema = z.object({
   amount: z.number().positive(),
   currency: z.string().length(3).default("USD"),
   description: z.string().optional(),
+  status: z.string().max(16).optional(),
+  category: z.string().max(64).optional(),
+  merchant_name: z.string().max(128).optional(),
+  merchant_category_code: z.string().max(4).optional(),
+  reference_number: z.string().max(64).optional(),
+  transaction_date: z.string().optional(),
+  value_date: z.string().optional(),
+  original_amount: z.number().optional(),
+  original_currency: z.string().length(3).optional(),
+  exchange_rate: z.number().optional(),
+  fee_amount: z.number().optional(),
+  tax_amount: z.number().optional(),
+  payment_method: z.string().max(32).optional(),
+  card_last4: z.string().length(4).optional(),
+  card_network: z.string().max(32).optional(),
+  location_city: z.string().max(64).optional(),
+  location_country: z.string().length(3).optional(),
+  is_recurring: z.boolean().optional(),
+  original_description: z.string().optional(),
+  counterparty_name: z.string().max(128).optional(),
+  counterparty_account_number: z.string().max(64).optional(),
+  counterparty_bank_code: z.string().max(32).optional(),
+  balance_after: z.number().optional(),
+  statement_period: z.string().max(16).optional(),
+  metadata: z.any().optional(),
+  auth_code: z.string().max(32).optional(),
+  channel: z.string().max(16).optional(),
+  risk_score: z.number().optional(),
+  labels: z.array(z.string()).optional(),
+  notes: z.string().optional(),
+  parent_transaction_id: z.number().int().optional(),
+  reconciliation_id: z.string().max(64).optional(),
 });
 
 export const updateSchema = createSchema.partial().refine(
@@ -14,7 +46,12 @@ export const updateSchema = createSchema.partial().refine(
   { message: "At least one field must be provided" },
 );
 
-const sortableColumns = ["id", "account_id", "type", "amount", "currency", "description", "created_at"] as const;
+const sortableColumns = [
+  "id", "account_id", "type", "amount", "currency", "description", "created_at",
+  "status", "category", "merchant_name", "transaction_date", "value_date", "original_amount",
+  "fee_amount", "tax_amount", "payment_method", "location_city", "location_country",
+  "is_recurring", "counterparty_name", "balance_after", "risk_score"
+] as const;
 
 export const listQuerySchema = z.object({
   account_id: z.string().optional(),
