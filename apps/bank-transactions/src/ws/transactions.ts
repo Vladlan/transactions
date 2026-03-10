@@ -5,7 +5,9 @@ import {
   createSchema,
   updateSchema,
   listQuerySchema,
+  countQuerySchema,
   listTransactions,
+  countTransactions,
   getTransaction,
   createTransaction,
   updateTransaction,
@@ -14,7 +16,7 @@ import {
 
 const messageSchema = z.object({
   id: z.string().or(z.number()).optional(),
-  action: z.enum(["list", "get", "create", "update", "delete"]),
+  action: z.enum(["list", "count", "get", "create", "update", "delete"]),
   params: z.record(z.unknown()).optional(),
 });
 
@@ -44,6 +46,17 @@ async function handleMessage(ws: WebSocket, raw: string) {
         }
         const rows = await listTransactions(parsed.data);
         send(ws, id, { data: rows });
+        return;
+      }
+
+      case "count": {
+        const parsed = countQuerySchema.safeParse(params ?? {});
+        if (!parsed.success) {
+          send(ws, id, { error: parsed.error.flatten() });
+          return;
+        }
+        const count = await countTransactions(parsed.data);
+        send(ws, id, { data: { count } });
         return;
       }
 

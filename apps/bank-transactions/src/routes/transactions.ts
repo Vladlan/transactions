@@ -3,7 +3,9 @@ import {
   createSchema,
   updateSchema,
   listQuerySchema,
+  countQuerySchema,
   listTransactions,
+  countTransactions,
   getTransaction,
   createTransaction,
   updateTransaction,
@@ -11,6 +13,18 @@ import {
 } from "../services/transactions.js";
 
 const router = Router();
+
+// GET /transactions/count
+router.get("/count", async (req: Request, res: Response) => {
+  const parsed = countQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.flatten() });
+    return;
+  }
+
+  const count = await countTransactions(parsed.data);
+  res.json({ count });
+});
 
 // GET /transactions
 router.get("/", async (req: Request, res: Response) => {

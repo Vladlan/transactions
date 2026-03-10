@@ -46,6 +46,33 @@ export async function listTransactions(query: z.infer<typeof listQuerySchema>) {
   return rows;
 }
 
+export const countQuerySchema = z.object({
+  account_id: z.string().optional(),
+  type: z.enum(["credit", "debit"]).optional(),
+});
+
+export async function countTransactions(query: z.infer<typeof countQuerySchema>) {
+  const conditions: string[] = [];
+  const params: unknown[] = [];
+
+  if (query.account_id) {
+    params.push(query.account_id);
+    conditions.push(`account_id = $${params.length}`);
+  }
+  if (query.type) {
+    params.push(query.type);
+    conditions.push(`type = $${params.length}`);
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const { rows } = await pool.query(
+    `SELECT count(*)::int AS count FROM transactions ${where}`,
+    params,
+  );
+
+  return rows[0].count as number;
+}
+
 export async function getTransaction(id: string) {
   const { rows } = await pool.query(
     "SELECT * FROM transactions WHERE id = $1",
