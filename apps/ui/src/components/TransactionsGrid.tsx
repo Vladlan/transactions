@@ -5,21 +5,25 @@ import {
   type ColDef,
   type CellValueChangedEvent,
   type ICellRendererParams,
+  type GridReadyEvent,
+  type IDatasource,
   ModuleRegistry,
+  InfiniteRowModelModule,
 } from "ag-grid-community";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Trash2, Pencil } from "lucide-react";
 import type { Transaction, UpdateParams } from "@/types/transaction";
 
-ModuleRegistry.registerModules([AllCommunityModule]);
+ModuleRegistry.registerModules([AllCommunityModule, InfiniteRowModelModule]);
 
 interface Props {
-  transactions: Transaction[];
-  loading: boolean;
+  datasource: IDatasource | undefined;
+  cacheBlockSize: number;
   onUpdate: (params: UpdateParams) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onEdit: (transaction: Transaction) => void;
+  onGridReady: (event: GridReadyEvent) => void;
 }
 
 function TypeBadge(params: ICellRendererParams<Transaction>) {
@@ -51,7 +55,7 @@ function ActionsCellRenderer(
   );
 }
 
-export function TransactionsGrid({ transactions, loading, onUpdate, onDelete, onEdit }: Props) {
+export function TransactionsGrid({ datasource, cacheBlockSize, onUpdate, onDelete, onEdit, onGridReady }: Props) {
   const onCellValueChanged = useCallback(
     (event: CellValueChangedEvent<Transaction>) => {
       if (!event.data) return;
@@ -64,34 +68,31 @@ export function TransactionsGrid({ transactions, loading, onUpdate, onDelete, on
 
   const columnDefs = useMemo<ColDef<Transaction>[]>(
     () => [
-      { field: "id", headerName: "ID", width: 80, filter: "agNumberColumnFilter" },
-      { field: "account_id", headerName: "Account", editable: true, filter: "agTextColumnFilter", width: 140 },
+      { field: "id", headerName: "ID", width: 80 },
+      { field: "account_id", headerName: "Account", editable: true, width: 140 },
       {
         field: "type",
         headerName: "Type",
         width: 110,
         cellRenderer: TypeBadge,
-        filter: "agTextColumnFilter",
       },
       {
         field: "amount",
         headerName: "Amount",
         editable: true,
         width: 120,
-        filter: "agNumberColumnFilter",
         valueFormatter: (p) => {
           if (p.value == null) return "";
           return Number(p.value).toFixed(2);
         },
       },
-      { field: "currency", headerName: "Currency", editable: true, width: 100, filter: "agTextColumnFilter" },
-      { field: "description", headerName: "Description", editable: true, flex: 1, filter: "agTextColumnFilter" },
+      { field: "currency", headerName: "Currency", editable: true, width: 100 },
+      { field: "description", headerName: "Description", editable: true, flex: 1 },
       {
         field: "created_at",
         headerName: "Created",
         width: 180,
         valueFormatter: (p) => (p.value ? new Date(p.value as string).toLocaleString() : ""),
-        filter: "agDateColumnFilter",
       },
       {
         headerName: "",
@@ -99,7 +100,6 @@ export function TransactionsGrid({ transactions, loading, onUpdate, onDelete, on
         cellRenderer: ActionsCellRenderer,
         cellRendererParams: { onDelete, onEdit },
         sortable: false,
-        filter: false,
       },
     ],
     [onDelete, onEdit],
@@ -107,7 +107,7 @@ export function TransactionsGrid({ transactions, loading, onUpdate, onDelete, on
 
   const defaultColDef = useMemo<ColDef>(
     () => ({
-      sortable: true,
+      sortable: false,
       resizable: true,
     }),
     [],
@@ -116,14 +116,17 @@ export function TransactionsGrid({ transactions, loading, onUpdate, onDelete, on
   return (
     <div className="ag-theme-alpine w-full" style={{ height: 600 }}>
       <AgGridReact<Transaction>
-        rowData={transactions}
+        rowModelType="infinite"
+        datasource={datasource}
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
         onCellValueChanged={onCellValueChanged}
-        loading={loading}
-        pagination
-        paginationPageSize={20}
-        paginationPageSizeSelector={[20, 50, 100]}
+        onGridReady={onGridReady}
+        cacheBlockSize={cacheBlockSize}
+        cacheOverflowSize={2}
+        maxConcurrentDatasourceRequests={1}
+        infiniteInitialRowCount={1}
+        maxBlocksInCache={10}
         getRowId={(params) => String(params.data.id)}
       />
     </div>

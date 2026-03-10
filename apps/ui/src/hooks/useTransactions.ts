@@ -6,63 +6,83 @@ import type {
   CreateParams,
   UpdateParams,
 } from "../types/transaction";
+import type { IDatasource, IGetRowsParams } from "ag-grid-community";
+
+const PAGE_SIZE = 50;
 
 export function useTransactions() {
   const { request, isConnected } = useWs();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const currentParams = useRef<ListParams>({ limit: 100, offset: 0 });
+  const filtersRef = useRef<Pick<ListParams, "account_id" | "type">>({});
+  const gridApiRef = useRef<{ purgeInfiniteCache?: () => void } | null>(null);
 
-  const fetchTransactions = useCallback(
-    async (params?: ListParams) => {
-      if (params) currentParams.current = params;
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await request<Transaction[]>("list", currentParams.current as Record<string, unknown>);
-        setTransactions(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : String(err));
-      } finally {
-        setLoading(false);
-      }
+  const buildDatasource = useCallback(
+    (filters: Pick<ListParams, "account_id" | "type">): IDatasource => {
+      filtersRef.current = filters;
+      return {
+        getRows: async (params: IGetRowsParams) => {
+          const limit = params.endRow - params.startRow;
+          const offset = params.startRow;
+          try {
+            const [rows, countResult] = await Promise.all([
+              request<Transaction[]>("list", {
+                ...filters,
+                limit,
+                offset,
+              } as unknown as Record<string, unknown>),
+              request<{ count: number }>("count", {
+                ...filters,
+              } as unknown as Record<string, unknown>),
+            ]);
+            params.successCallback(rows, countResult.count);
+            setError(null);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : String(err));
+            params.failCallback();
+          }
+        },
+      };
     },
     [request],
   );
 
+  const refreshGrid = useCallback(() => {
+    gridApiRef.current?.purgeInfiniteCache?.();
+  }, []);
+
   const createTransaction = useCallback(
     async (params: CreateParams) => {
       await request("create", params as unknown as Record<string, unknown>);
-      await fetchTransactions();
+      refreshGrid();
     },
-    [request, fetchTransactions],
+    [request, refreshGrid],
   );
 
   const updateTransaction = useCallback(
     async (params: UpdateParams) => {
       await request("update", params as unknown as Record<string, unknown>);
-      await fetchTransactions();
+      refreshGrid();
     },
-    [request, fetchTransactions],
+    [request, refreshGrid],
   );
 
   const deleteTransaction = useCallback(
     async (id: number) => {
       await request("delete", { id });
-      await fetchTransactions();
+      refreshGrid();
     },
-    [request, fetchTransactions],
+    [request, refreshGrid],
   );
 
   return {
-    transactions,
-    loading,
     error,
     isConnected,
-    fetchTransactions,
+    buildDatasource,
+    gridApiRef,
+    refreshGrid,
     createTransaction,
     updateTransaction,
     deleteTransaction,
+    PAGE_SIZE,
   };
 }

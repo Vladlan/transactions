@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTransactions } from "./hooks/useTransactions";
 import { TransactionsGrid } from "./components/TransactionsGrid";
 import { TransactionDialog } from "./components/TransactionDialog";
@@ -15,42 +15,52 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, RefreshCw } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import type { Transaction } from "./types/transaction";
+import type { GridReadyEvent, IDatasource } from "ag-grid-community";
 
 export function App() {
   const {
-    transactions,
-    loading,
     error,
     isConnected,
-    fetchTransactions,
+    buildDatasource,
+    gridApiRef,
     createTransaction,
     updateTransaction,
     deleteTransaction,
+    PAGE_SIZE,
   } = useTransactions();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTx, setEditingTx] = useState<Transaction | null>(null);
   const [filterAccountId, setFilterAccountId] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
+  const [datasource, setDatasource] = useState<IDatasource | undefined>();
+  const gridReadyRef = useRef(false);
+
+  const applyFilters = useCallback(() => {
+    const filters = {
+      account_id: filterAccountId || undefined,
+      type: filterType === "all" ? undefined : (filterType as "credit" | "debit"),
+    };
+    setDatasource(buildDatasource(filters));
+  }, [buildDatasource, filterAccountId, filterType]);
 
   useEffect(() => {
     if (isConnected) {
-      fetchTransactions({ limit: 100, offset: 0 });
+      applyFilters();
     }
-  }, [isConnected, fetchTransactions]);
+  }, [isConnected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (error) toast.error(error);
   }, [error]);
 
-  const handleFilter = useCallback(() => {
-    fetchTransactions({
-      limit: 100,
-      offset: 0,
-      account_id: filterAccountId || undefined,
-      type: filterType === "all" ? undefined : (filterType as "credit" | "debit"),
-    });
-  }, [fetchTransactions, filterAccountId, filterType]);
+  const handleGridReady = useCallback(
+    (event: GridReadyEvent) => {
+      gridApiRef.current = event.api;
+      gridReadyRef.current = true;
+    },
+    [gridApiRef],
+  );
 
   const handleEdit = useCallback((tx: Transaction) => {
     setEditingTx(tx);
@@ -123,18 +133,19 @@ export function App() {
               <SelectItem value="debit">Debit</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={handleFilter}>
+          <Button variant="outline" onClick={applyFilters}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Apply
           </Button>
         </div>
 
         <TransactionsGrid
-          transactions={transactions}
-          loading={loading}
+          datasource={datasource}
+          cacheBlockSize={PAGE_SIZE}
           onUpdate={handleUpdateSubmit}
           onDelete={handleDelete}
           onEdit={handleEdit}
+          onGridReady={handleGridReady}
         />
 
         <TransactionDialog
