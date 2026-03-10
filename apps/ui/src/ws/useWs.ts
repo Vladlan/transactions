@@ -30,5 +30,12 @@ export function useWs() {
     [],
   );
 
-  return { request, isConnected };
+  const onEvent = useCallback(
+    (listener: (event: string, data: unknown) => void) => {
+      return clientRef.current?.onEvent(listener) ?? (() => {});
+    },
+    [],
+  );
+
+  return { request, isConnected, onEvent };
 }

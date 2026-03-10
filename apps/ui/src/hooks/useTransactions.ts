@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useWs } from "../ws/useWs";
 import type {
   Transaction,
@@ -11,7 +11,7 @@ import type { IDatasource, IGetRowsParams } from "ag-grid-community";
 const PAGE_SIZE = 50;
 
 export function useTransactions() {
-  const { request, isConnected } = useWs();
+  const { request, isConnected, onEvent } = useWs();
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const filtersRef = useRef<Pick<ListParams, "account_id" | "type">>({});
@@ -53,6 +53,14 @@ export function useTransactions() {
   const refreshGrid = useCallback(() => {
     gridApiRef.current?.purgeInfiniteCache?.();
   }, []);
+
+  useEffect(() => {
+    return onEvent((event) => {
+      if (event === "transaction_changed") {
+        refreshGrid();
+      }
+    });
+  }, [onEvent, refreshGrid]);
 
   const createTransaction = useCallback(
     async (params: CreateParams) => {

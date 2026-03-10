@@ -5,11 +5,13 @@ type PendingRequest = {
 };
 
 type ConnectionListener = (connected: boolean) => void;
+type EventListener = (event: string, data: unknown) => void;
 
 export class WsClient {
   private ws: WebSocket | null = null;
   private pending = new Map<string, PendingRequest>();
   private listeners = new Set<ConnectionListener>();
+  private eventListeners = new Set<EventListener>();
   private url: string;
   private reconnectDelay = 1000;
   private shouldReconnect = true;
@@ -40,6 +42,8 @@ export class WsClient {
           } else {
             req.resolve(msg.data);
           }
+        } else if (msg.event) {
+          this.eventListeners.forEach((fn) => fn(msg.event as string, msg.data));
         }
       } catch {
         // ignore malformed messages
@@ -85,6 +89,11 @@ export class WsClient {
   onConnectionChange(listener: ConnectionListener) {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  onEvent(listener: EventListener) {
+    this.eventListeners.add(listener);
+    return () => this.eventListeners.delete(listener);
   }
 
   private notifyListeners(connected: boolean) {

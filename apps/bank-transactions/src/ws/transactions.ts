@@ -20,8 +20,20 @@ const messageSchema = z.object({
   params: z.record(z.unknown()).optional(),
 });
 
+let wssRef: WebSocketServer | null = null;
+
 function send(ws: WebSocket, id: string | number | undefined, payload: Record<string, unknown>) {
   ws.send(JSON.stringify({ id, ...payload }));
+}
+
+function broadcast(sender: WebSocket, event: string, data?: unknown) {
+  if (!wssRef) return;
+  const msg = JSON.stringify({ event, data });
+  for (const client of wssRef.clients) {
+    if (client !== sender && client.readyState === client.OPEN) {
+      client.send(msg);
+    }
+  }
 }
 
 async function handleMessage(ws: WebSocket, raw: string) {
@@ -83,6 +95,7 @@ async function handleMessage(ws: WebSocket, raw: string) {
         }
         const result = await createTransaction(parsed.data);
         send(ws, id, { data: result });
+        broadcast(ws, "transaction_changed", { action: "create" });
         return;
       }
 
@@ -104,6 +117,7 @@ async function handleMessage(ws: WebSocket, raw: string) {
           return;
         }
         send(ws, id, { data: result });
+        broadcast(ws, "transaction_changed", { action: "update" });
         return;
       }
 
@@ -119,6 +133,7 @@ async function handleMessage(ws: WebSocket, raw: string) {
           return;
         }
         send(ws, id, { data: { deleted: true } });
+        broadcast(ws, "transaction_changed", { action: "delete" });
         return;
       }
     }
@@ -129,6 +144,7 @@ async function handleMessage(ws: WebSocket, raw: string) {
 
 export function attachWebSocket(server: Server) {
   const wss = new WebSocketServer({ server, path: "/ws" });
+  wssRef = wss;
 
   wss.on("connection", (ws) => {
     ws.on("message", (data) => {
