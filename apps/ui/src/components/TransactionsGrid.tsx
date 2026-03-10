@@ -129,7 +129,7 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
 
   const defaultColDef = useMemo<ColDef>(
     () => ({
-      sortable: false,
+      sortable: true,
       resizable: true,
     }),
     [],

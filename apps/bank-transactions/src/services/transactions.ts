@@ -14,15 +14,19 @@ export const updateSchema = createSchema.partial().refine(
   { message: "At least one field must be provided" },
 );
 
+const sortableColumns = ["id", "account_id", "type", "amount", "currency", "description", "created_at"] as const;
+
 export const listQuerySchema = z.object({
   account_id: z.string().optional(),
   type: z.enum(["credit", "debit"]).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
   offset: z.coerce.number().int().min(0).default(0),
+  sort_field: z.enum(sortableColumns).optional(),
+  sort_direction: z.enum(["asc", "desc"]).optional(),
 });
 
 export async function listTransactions(query: z.infer<typeof listQuerySchema>) {
-  const { account_id, type, limit, offset } = query;
+  const { account_id, type, limit, offset, sort_field, sort_direction } = query;
   const conditions: string[] = [];
   const params: unknown[] = [];
 
@@ -36,10 +40,11 @@ export async function listTransactions(query: z.infer<typeof listQuerySchema>) {
   }
 
   const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+  const orderBy = sort_field ? `${sort_field} ${sort_direction ?? "asc"}` : "created_at DESC";
   params.push(limit, offset);
 
   const { rows } = await pool.query(
-    `SELECT * FROM transactions ${where} ORDER BY created_at DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+    `SELECT * FROM transactions ${where} ORDER BY ${orderBy} LIMIT $${params.length - 1} OFFSET $${params.length}`,
     params,
   );
 

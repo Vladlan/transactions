@@ -24,12 +24,14 @@ export function useTransactions() {
         getRows: async (params: IGetRowsParams) => {
           const limit = params.endRow - params.startRow;
           const offset = params.startRow;
+          const sort = params.sortModel?.[0];
           try {
             const [rows, countResult] = await Promise.all([
               request<Transaction[]>("list", {
                 ...filters,
                 limit,
                 offset,
+                ...(sort && { sort_field: sort.colId, sort_direction: sort.sort }),
               } as unknown as Record<string, unknown>),
               request<{ count: number }>("count", {
                 ...filters,

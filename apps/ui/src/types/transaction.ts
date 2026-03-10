@@ -14,6 +14,8 @@ export interface ListParams {
   type?: "credit" | "debit";
   limit?: number;
   offset?: number;
+  sort_field?: string;
+  sort_direction?: "asc" | "desc";
 }
 
 export interface CreateParams {
