@@ -121,6 +121,14 @@ registry.registerPath({
       type: z.enum(["credit", "debit"]).optional(),
       limit: z.coerce.number().int().min(1).max(100).default(20),
       offset: z.coerce.number().int().min(0).default(0),
+      sort_field: z
+        .enum(["id", "account_id", "type", "amount", "currency", "description", "created_at"])
+        .optional()
+        .openapi({ description: "Column to sort by" }),
+      sort_direction: z
+        .enum(["asc", "desc"])
+        .optional()
+        .openapi({ description: "Sort direction (defaults to asc)" }),
     }),
   },
   responses: {

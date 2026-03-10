@@ -71,6 +71,13 @@ const errorResponse = z.object({
   error: z.unknown(),
 });
 
+const transactionChangedEvent = z.object({
+  event: z.literal("transaction_changed"),
+  data: z.object({
+    action: z.enum(["create", "update", "delete"]).describe("The mutation that triggered the broadcast"),
+  }),
+});
+
 export const asyncApiDocument = {
   asyncapi: "3.0.0",
   info: {
@@ -98,6 +105,7 @@ export const asyncApiDocument = {
         deleteRequest: { $ref: "#/components/messages/deleteRequest" },
         successResponse: { $ref: "#/components/messages/successResponse" },
         errorResponse: { $ref: "#/components/messages/errorResponse" },
+        transactionChanged: { $ref: "#/components/messages/transactionChanged" },
       },
     },
   },
@@ -149,6 +157,12 @@ export const asyncApiDocument = {
       channel: { $ref: "#/channels/transactions" },
       summary: "Error response",
       messages: [{ $ref: "#/channels/transactions/messages/errorResponse" }],
+    },
+    receiveTransactionChanged: {
+      action: "receive",
+      channel: { $ref: "#/channels/transactions" },
+      summary: "Broadcast sent to all other clients when a transaction is created, updated, or deleted",
+      messages: [{ $ref: "#/channels/transactions/messages/transactionChanged" }],
     },
   },
   components: {
@@ -207,6 +221,13 @@ export const asyncApiDocument = {
         payload: {
           schemaFormat: "application/schema+json;version=draft-07",
           schema: jsonSchema(errorResponse),
+        },
+      },
+      transactionChanged: {
+        summary: "Transaction changed broadcast",
+        payload: {
+          schemaFormat: "application/schema+json;version=draft-07",
+          schema: jsonSchema(transactionChangedEvent),
         },
       },
     },
