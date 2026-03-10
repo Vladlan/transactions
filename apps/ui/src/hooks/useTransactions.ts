@@ -55,6 +55,10 @@ export function useTransactions() {
     gridApiRef.current?.purgeInfiniteCache?.();
   }, []);
 
+  const clearSelection = useCallback(() => {
+    gridApiRef.current?.deselectAll();
+  }, []);
+
   const handleTransactionChange = useCallback(
     (eventData: TransactionEvent) => {
       const { action, data, id } = eventData;
@@ -170,6 +174,7 @@ export function useTransactions() {
     buildDatasource,
     gridApiRef,
     refreshGrid,
+    clearSelection,
     createTransaction,
     updateTransaction,
     deleteTransaction,

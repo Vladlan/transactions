@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { AgGridReact } from "ag-grid-react";
 import {
   AllCommunityModule,
@@ -24,6 +24,7 @@ interface Props {
   onUpdate: (params: UpdateParams) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onEdit: (transaction: Transaction) => void;
+  onSelectionChanged: (selectedRows: Transaction[]) => void;
   onGridReady: (event: GridReadyEvent) => void;
 }
 
@@ -40,7 +41,6 @@ function TypeBadge(params: ICellRendererParams<Transaction>) {
 function ActionsCellRenderer(
   params: ICellRendererParams<Transaction> & {
     onDelete: (id: number) => void;
-    onEdit: (tx: Transaction) => void;
   },
 ) {
   if (params.node.rowPinned) return null;
@@ -48,9 +48,6 @@ function ActionsCellRenderer(
   if (!tx) return null;
   return (
     <div className="flex items-center gap-1 h-full">
-      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => params.onEdit(tx)}>
-        <Pencil className="h-3.5 w-3.5" />
-      </Button>
       <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => params.onDelete(tx.id)}>
         <Trash2 className="h-3.5 w-3.5" />
       </Button>
@@ -58,7 +55,7 @@ function ActionsCellRenderer(
   );
 }
 
-export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpdate, onDelete, onEdit, onGridReady }: Props) {
+export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpdate, onDelete, onEdit, onSelectionChanged: onSelectionChangedProp, onGridReady }: Props) {
   const pinnedBottomRowData = useMemo(
     () =>
       totalCount !== null
@@ -77,13 +74,22 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
     [onUpdate],
   );
 
+  const onSelectionChanged = useCallback(() => {
+    const selectedRows = gridApiRef.current?.getSelectedRows() || [];
+    onSelectionChangedProp(selectedRows);
+  }, [onSelectionChangedProp]);
+
+  const gridApiRef = useRef<any>(null);
+
   const columnDefs = useMemo<ColDef<Transaction>[]>(
     () => [
       {
         field: "id",
         headerName: "ID",
-        width: 80,
-        minWidth: 112,
+        width: 120,
+        minWidth: 140,
+        checkboxSelection: true,
+        headerCheckboxSelection: true,
         type: "rightAligned",
         colSpan: (params) => (params.node?.rowPinned ? 40 : 1),
         cellRenderer: (params: ICellRendererParams<Transaction>) => {
@@ -177,14 +183,14 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
       },
       {
         headerName: "",
-        width: 90,
+        width: 60,
         cellRenderer: ActionsCellRenderer,
-        cellRendererParams: { onDelete, onEdit },
+        cellRendererParams: { onDelete },
         sortable: false,
         pinned: "right",
       },
     ],
-    [onDelete, onEdit],
+    [onDelete],
   );
 
   const defaultColDef = useMemo<ColDef>(
@@ -204,7 +210,12 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}
         onCellValueChanged={onCellValueChanged}
-        onGridReady={onGridReady}
+        onSelectionChanged={onSelectionChanged}
+        onGridReady={(params) => {
+          gridApiRef.current = params.api;
+          onGridReady(params);
+        }}
+        rowSelection="multiple"
         pinnedBottomRowData={pinnedBottomRowData}
         cacheBlockSize={cacheBlockSize}
         cacheOverflowSize={2}

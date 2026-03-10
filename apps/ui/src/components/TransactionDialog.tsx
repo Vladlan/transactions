@@ -40,12 +40,14 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   transaction?: Transaction | null;
+  selectedTransactions?: Transaction[];
   onCreate: (params: CreateParams) => Promise<void>;
   onUpdate: (params: UpdateParams) => Promise<void>;
 }
 
-export function TransactionDialog({ open, onOpenChange, transaction, onCreate, onUpdate }: Props) {
-  const isEdit = !!transaction;
+export function TransactionDialog({ open, onOpenChange, transaction, selectedTransactions = [], onCreate, onUpdate }: Props) {
+  const isBulk = selectedTransactions.length > 1;
+  const isEdit = !!transaction || isBulk;
   const [accountId, setAccountId] = useState("");
   const [type, setType] = useState<"credit" | "debit">("credit");
   const [amount, setAmount] = useState("");
@@ -61,8 +63,29 @@ export function TransactionDialog({ open, onOpenChange, transaction, onCreate, o
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // For bulk edit - track which fields are being updated
+  const [updatedFields, setUpdatedFields] = useState<Set<string>>(new Set());
+
   useEffect(() => {
-    if (transaction) {
+    if (!open) return;
+    
+    setUpdatedFields(new Set());
+    
+    if (isBulk) {
+      setAccountId("");
+      setType("credit");
+      setAmount("");
+      setCurrency("USD");
+      setDescription("");
+      setStatus("pending");
+      setCategory("");
+      setMerchantName("");
+      setPaymentMethod("");
+      setTransactionDate("");
+      setValueDate("");
+      setReferenceNumber("");
+      setNotes("");
+    } else if (transaction) {
       setAccountId(transaction.account_id);
       setType(transaction.type);
       setAmount(String(transaction.amount));
@@ -91,36 +114,70 @@ export function TransactionDialog({ open, onOpenChange, transaction, onCreate, o
       setReferenceNumber("");
       setNotes("");
     }
-  }, [transaction, open]);
+  }, [transaction, open, isBulk]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     
-    const params = {
-      account_id: accountId,
-      type,
-      amount: Number(amount),
-      currency,
-      description: description || null,
-      status,
-      category: category || null,
-      merchant_name: merchantName || null,
-      payment_method: paymentMethod || null,
-      transaction_date: transactionDate || null,
-      value_date: valueDate || null,
-      reference_number: referenceNumber || null,
-      notes: notes || null,
-    };
-
     try {
-      if (isEdit) {
+      if (isBulk) {
+        // Only include fields that were touched
+        const baseParams: Partial<UpdateParams> = {};
+        if (updatedFields.has("account_id")) baseParams.account_id = accountId;
+        if (updatedFields.has("type")) baseParams.type = type;
+        if (updatedFields.has("amount")) baseParams.amount = Number(amount);
+        if (updatedFields.has("currency")) baseParams.currency = currency;
+        if (updatedFields.has("status")) baseParams.status = status;
+        if (updatedFields.has("category")) baseParams.category = category || null;
+        if (updatedFields.has("merchant_name")) baseParams.merchant_name = merchantName || null;
+        if (updatedFields.has("payment_method")) baseParams.payment_method = paymentMethod || null;
+        if (updatedFields.has("transaction_date")) baseParams.transaction_date = transactionDate || null;
+        if (updatedFields.has("value_date")) baseParams.value_date = valueDate || null;
+        if (updatedFields.has("reference_number")) baseParams.reference_number = referenceNumber || null;
+        if (updatedFields.has("description")) baseParams.description = description || null;
+        if (updatedFields.has("notes")) baseParams.notes = notes || null;
+
+        // Note: Currently we loop because there's no bulk update backend endpoint
+        for (const tx of selectedTransactions) {
+          await onUpdate({
+            ...baseParams,
+            id: tx.id,
+          });
+        }
+      } else if (isEdit) {
         await onUpdate({
           id: transaction!.id,
-          ...params
+          account_id: accountId,
+          type,
+          amount: Number(amount),
+          currency,
+          description: description || null,
+          status,
+          category: category || null,
+          merchant_name: merchantName || null,
+          payment_method: paymentMethod || null,
+          transaction_date: transactionDate || null,
+          value_date: valueDate || null,
+          reference_number: referenceNumber || null,
+          notes: notes || null,
         });
       } else {
-        await onCreate(params);
+        await onCreate({
+          account_id: accountId,
+          type,
+          amount: Number(amount),
+          currency,
+          description: description || null,
+          status,
+          category: category || null,
+          merchant_name: merchantName || null,
+          payment_method: paymentMethod || null,
+          transaction_date: transactionDate || null,
+          value_date: valueDate || null,
+          reference_number: referenceNumber || null,
+          notes: notes || null,
+        });
       }
       onOpenChange(false);
     } finally {
@@ -128,29 +185,49 @@ export function TransactionDialog({ open, onOpenChange, transaction, onCreate, o
     }
   };
 
+  const handleFieldChange = (field: string, setter: (val: any) => void, val: any) => {
+    setter(val);
+    if (isBulk) {
+      setUpdatedFields((prev) => new Set(prev).add(field));
+    }
+  };
+
+  const renderLabel = (id: string, label: string) => (
+    <div className="flex items-center gap-2">
+      <Label htmlFor={id} className={cn(isBulk && !updatedFields.has(id) && "text-muted-foreground opacity-70")}>
+        {label}
+      </Label>
+      {isBulk && updatedFields.has(id) && (
+        <span className="text-[10px] bg-blue-500/10 text-blue-500 px-1.5 py-0.5 rounded-full font-medium">Changed</span>
+      )}
+    </div>
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{isEdit ? "Edit Transaction" : "New Transaction"}</DialogTitle>
+          <DialogTitle>
+            {isBulk ? `Edit ${selectedTransactions.length} Transactions` : isEdit ? "Edit Transaction" : "New Transaction"}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <ScrollArea className="max-h-[70vh] px-1">
             <div className="grid gap-6 py-4 mr-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="account_id">Account ID</Label>
+                  {renderLabel("account_id", "Account ID")}
                   <Input
                     id="account_id"
                     value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
-                    required
+                    onChange={(e) => handleFieldChange("account_id", setAccountId, e.target.value)}
+                    required={!isBulk}
                     placeholder="acc_0001"
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="type">Type</Label>
-                  <Select value={type} onValueChange={(v) => setType(v as "credit" | "debit")}>
+                  {renderLabel("type", "Type")}
+                  <Select value={type} onValueChange={(v) => handleFieldChange("type", setType, v as "credit" | "debit")}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -164,32 +241,32 @@ export function TransactionDialog({ open, onOpenChange, transaction, onCreate, o
 
               <div className="grid grid-cols-3 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="amount">Amount</Label>
+                  {renderLabel("amount", "Amount")}
                   <Input
                     id="amount"
                     type="number"
                     step="0.01"
                     min="0.01"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    required
+                    onChange={(e) => handleFieldChange("amount", setAmount, e.target.value)}
+                    required={!isBulk}
                     placeholder="100.00"
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="currency">Currency</Label>
+                  {renderLabel("currency", "Currency")}
                   <Input
                     id="currency"
                     value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
+                    onChange={(e) => handleFieldChange("currency", setCurrency, e.target.value)}
                     maxLength={3}
-                    required
+                    required={!isBulk}
                     placeholder="USD"
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={status} onValueChange={(v) => setStatus(v || "pending")}>
+                  {renderLabel("status", "Status")}
+                  <Select value={status} onValueChange={(v) => handleFieldChange("status", setStatus, v || "pending")}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -205,20 +282,20 @@ export function TransactionDialog({ open, onOpenChange, transaction, onCreate, o
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="category">Category</Label>
+                  {renderLabel("category", "Category")}
                   <Input
                     id="category"
                     value={category}
-                    onChange={(e) => setCategory(e.target.value)}
+                    onChange={(e) => handleFieldChange("category", setCategory, e.target.value)}
                     placeholder="e.g. Shopping"
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="merchant">Merchant</Label>
+                  {renderLabel("merchant_name", "Merchant")}
                   <Input
                     id="merchant"
                     value={merchantName}
-                    onChange={(e) => setMerchantName(e.target.value)}
+                    onChange={(e) => handleFieldChange("merchant_name", setMerchantName, e.target.value)}
                     placeholder="e.g. Amazon"
                   />
                 </div>
@@ -226,62 +303,62 @@ export function TransactionDialog({ open, onOpenChange, transaction, onCreate, o
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="transaction_date">Transaction Date</Label>
+                  {renderLabel("transaction_date", "Transaction Date")}
                   <Input
                     id="transaction_date"
                     type="date"
                     value={transactionDate}
-                    onChange={(e) => setTransactionDate(e.target.value)}
+                    onChange={(e) => handleFieldChange("transaction_date", setTransactionDate, e.target.value)}
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="value_date">Value Date</Label>
+                  {renderLabel("value_date", "Value Date")}
                   <Input
                     id="value_date"
                     type="date"
                     value={valueDate}
-                    onChange={(e) => setValueDate(e.target.value)}
+                    onChange={(e) => handleFieldChange("value_date", setValueDate, e.target.value)}
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="payment_method">Payment Method</Label>
+                  {renderLabel("payment_method", "Payment Method")}
                   <Input
                     id="payment_method"
                     value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    onChange={(e) => handleFieldChange("payment_method", setPaymentMethod, e.target.value)}
                     placeholder="e.g. Credit Card"
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="reference">Reference Number</Label>
+                  {renderLabel("reference_number", "Reference Number")}
                   <Input
                     id="reference"
                     value={referenceNumber}
-                    onChange={(e) => setReferenceNumber(e.target.value)}
+                    onChange={(e) => handleFieldChange("reference_number", setReferenceNumber, e.target.value)}
                     placeholder="REF-123456"
                   />
                 </div>
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
+                {renderLabel("description", "Description")}
                 <Input
                   id="description"
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => handleFieldChange("description", setDescription, e.target.value)}
                   placeholder="Short description"
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="notes">Notes</Label>
+                {renderLabel("notes", "Notes")}
                 <Textarea
                   id="notes"
                   value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
+                  onChange={(e) => handleFieldChange("notes", setNotes, e.target.value)}
                   placeholder="Additional notes..."
                   className="min-h-[80px]"
                 />

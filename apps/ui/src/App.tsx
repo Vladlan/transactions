@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, Pencil } from "lucide-react";
 import { Toaster, toast } from "sonner";
 import type { Transaction } from "./types/transaction";
 import type { GridReadyEvent, IDatasource } from "ag-grid-community";
@@ -27,6 +27,7 @@ export function App() {
     createTransaction,
     updateTransaction,
     deleteTransaction,
+    clearSelection,
     scrollToId,
     PAGE_SIZE,
   } = useTransactions();
@@ -36,6 +37,7 @@ export function App() {
   const [filterAccountId, setFilterAccountId] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
   const [datasource, setDatasource] = useState<IDatasource | undefined>();
+  const [selectedRows, setSelectedRows] = useState<Transaction[]>([]);
   const gridReadyRef = useRef(false);
 
   const applyFilters = useCallback(() => {
@@ -78,6 +80,7 @@ export function App() {
     async (id: number) => {
       try {
         await deleteTransaction(id);
+        clearSelection();
         toast.success("Transaction deleted");
       } catch {
         toast.error("Failed to delete transaction");
@@ -97,6 +100,7 @@ export function App() {
   const handleUpdateSubmit = useCallback(
     async (params: Parameters<typeof updateTransaction>[0]) => {
       await updateTransaction(params);
+      clearSelection();
       toast.success("Transaction updated");
     },
     [updateTransaction],
@@ -156,7 +160,22 @@ export function App() {
               }}
             />
           </div>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="secondary"
+              disabled={selectedRows.length === 0}
+              onClick={() => {
+                if (selectedRows.length === 1) {
+                  handleEdit(selectedRows[0]!);
+                } else if (selectedRows.length > 1) {
+                  setEditingTx(null);
+                  setDialogOpen(true);
+                }
+              }}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit Transactions
+            </Button>
             <Button onClick={handleCreate}>
               <Plus className="h-4 w-4 mr-2" />
               New Transaction
@@ -171,6 +190,7 @@ export function App() {
           onUpdate={handleUpdateSubmit}
           onDelete={handleDelete}
           onEdit={handleEdit}
+          onSelectionChanged={setSelectedRows}
           onGridReady={handleGridReady}
         />
 
@@ -178,6 +198,7 @@ export function App() {
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           transaction={editingTx}
+          selectedTransactions={selectedRows}
           onCreate={handleCreateSubmit}
           onUpdate={handleUpdateSubmit}
         />
