@@ -20,6 +20,7 @@ import type { GridReadyEvent, IDatasource } from "ag-grid-community";
 export function App() {
   const {
     error,
+    totalCount,
     isConnected,
     buildDatasource,
     gridApiRef,
@@ -142,6 +143,7 @@ export function App() {
         <TransactionsGrid
           datasource={datasource}
           cacheBlockSize={PAGE_SIZE}
+          totalCount={totalCount}
           onUpdate={handleUpdateSubmit}
           onDelete={handleDelete}
           onEdit={handleEdit}

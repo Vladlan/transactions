@@ -13,6 +13,7 @@ const PAGE_SIZE = 50;
 export function useTransactions() {
   const { request, isConnected } = useWs();
   const [error, setError] = useState<string | null>(null);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const filtersRef = useRef<Pick<ListParams, "account_id" | "type">>({});
   const gridApiRef = useRef<{ purgeInfiniteCache?: () => void } | null>(null);
 
@@ -35,6 +36,7 @@ export function useTransactions() {
               } as unknown as Record<string, unknown>),
             ]);
             params.successCallback(rows, countResult.count);
+            setTotalCount(countResult.count);
             setError(null);
           } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
@@ -76,6 +78,7 @@ export function useTransactions() {
 
   return {
     error,
+    totalCount,
     isConnected,
     buildDatasource,
     gridApiRef,

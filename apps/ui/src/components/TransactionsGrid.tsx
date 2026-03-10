@@ -20,6 +20,7 @@ ModuleRegistry.registerModules([AllCommunityModule, InfiniteRowModelModule]);
 interface Props {
   datasource: IDatasource | undefined;
   cacheBlockSize: number;
+  totalCount: number | null;
   onUpdate: (params: UpdateParams) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   onEdit: (transaction: Transaction) => void;
@@ -27,6 +28,7 @@ interface Props {
 }
 
 function TypeBadge(params: ICellRendererParams<Transaction>) {
+  if (params.node.rowPinned) return null;
   const val = params.value as string;
   return (
     <Badge variant={val === "credit" ? "default" : "secondary"}>
@@ -41,6 +43,7 @@ function ActionsCellRenderer(
     onEdit: (tx: Transaction) => void;
   },
 ) {
+  if (params.node.rowPinned) return null;
   const tx = params.data;
   if (!tx) return null;
   return (
@@ -55,7 +58,15 @@ function ActionsCellRenderer(
   );
 }
 
-export function TransactionsGrid({ datasource, cacheBlockSize, onUpdate, onDelete, onEdit, onGridReady }: Props) {
+export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpdate, onDelete, onEdit, onGridReady }: Props) {
+  const pinnedBottomRowData = useMemo(
+    () =>
+      totalCount !== null
+        ? [{ id: `Total: ${totalCount.toLocaleString()} transaction${totalCount !== 1 ? "s" : ""}` } as unknown as Transaction]
+        : [],
+    [totalCount],
+  );
+
   const onCellValueChanged = useCallback(
     (event: CellValueChangedEvent<Transaction>) => {
       if (!event.data) return;
@@ -68,8 +79,19 @@ export function TransactionsGrid({ datasource, cacheBlockSize, onUpdate, onDelet
 
   const columnDefs = useMemo<ColDef<Transaction>[]>(
     () => [
-      { field: "id", headerName: "ID", width: 80 },
-      { field: "account_id", headerName: "Account", editable: true, width: 140 },
+      {
+        field: "id",
+        headerName: "ID",
+        width: 80,
+        colSpan: (params) => (params.node?.rowPinned ? 8 : 1),
+        cellRenderer: (params: ICellRendererParams<Transaction>) => {
+          if (params.node.rowPinned) {
+            return <span className="font-medium">{params.value}</span>;
+          }
+          return params.value;
+        },
+      },
+      { field: "account_id", headerName: "Account", editable: (params) => !params.node.rowPinned, width: 140 },
       {
         field: "type",
         headerName: "Type",
@@ -79,15 +101,15 @@ export function TransactionsGrid({ datasource, cacheBlockSize, onUpdate, onDelet
       {
         field: "amount",
         headerName: "Amount",
-        editable: true,
+        editable: (params) => !params.node.rowPinned,
         width: 120,
         valueFormatter: (p) => {
           if (p.value == null) return "";
           return Number(p.value).toFixed(2);
         },
       },
-      { field: "currency", headerName: "Currency", editable: true, width: 100 },
-      { field: "description", headerName: "Description", editable: true, flex: 1 },
+      { field: "currency", headerName: "Currency", editable: (params) => !params.node.rowPinned, width: 100 },
+      { field: "description", headerName: "Description", editable: (params) => !params.node.rowPinned, flex: 1 },
       {
         field: "created_at",
         headerName: "Created",
@@ -122,6 +144,7 @@ export function TransactionsGrid({ datasource, cacheBlockSize, onUpdate, onDelet
         defaultColDef={defaultColDef}
         onCellValueChanged={onCellValueChanged}
         onGridReady={onGridReady}
+        pinnedBottomRowData={pinnedBottomRowData}
         cacheBlockSize={cacheBlockSize}
         cacheOverflowSize={2}
         maxConcurrentDatasourceRequests={1}
