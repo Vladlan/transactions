@@ -83,6 +83,7 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
         field: "id",
         headerName: "ID",
         width: 80,
+        type: "rightAligned",
         colSpan: (params) => (params.node?.rowPinned ? 8 : 1),
         cellRenderer: (params: ICellRendererParams<Transaction>) => {
           if (params.node.rowPinned) {
@@ -101,6 +102,7 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
       {
         field: "amount",
         headerName: "Amount",
+        type: "rightAligned",
         editable: (params) => !params.node.rowPinned,
         width: 120,
         valueFormatter: (p) => {
