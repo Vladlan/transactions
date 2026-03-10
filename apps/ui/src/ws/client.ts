@@ -66,7 +66,7 @@ export class WsClient {
         return;
       }
 
-      const id = crypto.randomUUID();
+      const id = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error("Request timeout"));
