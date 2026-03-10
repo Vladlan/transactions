@@ -4,6 +4,7 @@ import {
   createSchema,
   updateSchema,
   listQuerySchema,
+  countQuerySchema,
 } from "./services/transactions.js";
 
 const transactionSchema = z.object({
@@ -21,6 +22,12 @@ function jsonSchema(schema: z.ZodTypeAny) {
   const { $schema, ...rest } = zodToJsonSchema(schema) as Record<string, unknown>;
   return rest;
 }
+
+const countParams = z.object({
+  id: z.string().or(z.number()).optional().describe("Correlation ID echoed in the response"),
+  action: z.literal("count"),
+  params: countQuerySchema.optional(),
+});
 
 const listParams = z.object({
   id: z.string().or(z.number()).optional().describe("Correlation ID echoed in the response"),
@@ -83,6 +90,7 @@ export const asyncApiDocument = {
     transactions: {
       address: "/ws",
       messages: {
+        countRequest: { $ref: "#/components/messages/countRequest" },
         listRequest: { $ref: "#/components/messages/listRequest" },
         getRequest: { $ref: "#/components/messages/getRequest" },
         createRequest: { $ref: "#/components/messages/createRequest" },
@@ -94,6 +102,12 @@ export const asyncApiDocument = {
     },
   },
   operations: {
+    countTransactions: {
+      action: "send",
+      channel: { $ref: "#/channels/transactions" },
+      summary: "Count transactions with optional filters",
+      messages: [{ $ref: "#/channels/transactions/messages/countRequest" }],
+    },
     listTransactions: {
       action: "send",
       channel: { $ref: "#/channels/transactions" },
@@ -139,6 +153,13 @@ export const asyncApiDocument = {
   },
   components: {
     messages: {
+      countRequest: {
+        summary: "Count transactions",
+        payload: {
+          schemaFormat: "application/schema+json;version=draft-07",
+          schema: jsonSchema(countParams),
+        },
+      },
       listRequest: {
         summary: "List transactions",
         payload: {

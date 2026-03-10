@@ -79,6 +79,36 @@ registry.registerPath({
   },
 });
 
+// GET /transactions/count
+registry.registerPath({
+  method: "get",
+  path: "/transactions/count",
+  operationId: "countTransactions",
+  summary: "Count transactions",
+  request: {
+    query: z.object({
+      account_id: z.string().optional(),
+      type: z.enum(["credit", "debit"]).optional(),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Transaction count",
+      content: {
+        "application/json": {
+          schema: z.object({
+            count: z.number().int().openapi({ example: 42 }),
+          }),
+        },
+      },
+    },
+    400: {
+      description: "Validation error",
+      content: { "application/json": { schema: ValidationErrorSchema } },
+    },
+  },
+});
+
 // GET /transactions
 registry.registerPath({
   method: "get",
