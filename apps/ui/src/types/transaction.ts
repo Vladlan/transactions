@@ -33,7 +33,7 @@ export interface Transaction {
   counterparty_bank_code?: string;
   balance_after?: string;
   statement_period?: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   auth_code?: string;
   channel?: string;
   risk_score?: string;
@@ -41,6 +41,12 @@ export interface Transaction {
   notes?: string;
   parent_transaction_id?: number;
   reconciliation_id?: string;
+}
+
+export interface TransactionEvent {
+  action: "create" | "update" | "delete";
+  data?: Transaction;
+  id?: number | string;
 }
 
 export interface ListParams {

@@ -95,7 +95,7 @@ async function handleMessage(ws: WebSocket, raw: string) {
         }
         const result = await createTransaction(parsed.data);
         send(ws, id, { data: result });
-        broadcast(ws, "transaction_changed", { action: "create" });
+        broadcast(ws, "transaction_changed", { action: "create", data: result });
         return;
       }
 
@@ -117,7 +117,7 @@ async function handleMessage(ws: WebSocket, raw: string) {
           return;
         }
         send(ws, id, { data: result });
-        broadcast(ws, "transaction_changed", { action: "update" });
+        broadcast(ws, "transaction_changed", { action: "update", data: result });
         return;
       }
 
@@ -133,7 +133,7 @@ async function handleMessage(ws: WebSocket, raw: string) {
           return;
         }
         send(ws, id, { data: { deleted: true } });
-        broadcast(ws, "transaction_changed", { action: "delete" });
+        broadcast(ws, "transaction_changed", { action: "delete", id: txId });
         return;
       }
     }

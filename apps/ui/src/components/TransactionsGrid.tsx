@@ -151,7 +151,7 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
       { field: "exchange_rate", headerName: "Ex Rate", width: 120 },
       { field: "fee_amount", headerName: "Fee", type: "rightAligned", width: 100 },
       { field: "tax_amount", headerName: "Tax", type: "rightAligned", width: 100 },
-      { field: "is_recurring", headerName: "Recur?", width: 100, cellRenderer: (p: any) => (p.value ? "✅" : "") },
+      { field: "is_recurring", headerName: "Recur?", width: 100, cellRenderer: (p: ICellRendererParams<Transaction>) => (p.value ? "✅" : "") },
       { field: "counterparty_name", headerName: "Counterparty", width: 180 },
       { field: "counterparty_account_number", headerName: "C-Party Acc", width: 160 },
       { field: "counterparty_bank_code", headerName: "C-Party BIC", width: 140 },
@@ -190,6 +190,7 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
     () => ({
       sortable: true,
       resizable: true,
+      enableCellChangeFlash: true,
     }),
     [],
   );
@@ -209,7 +210,7 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
         maxConcurrentDatasourceRequests={1}
         infiniteInitialRowCount={1}
         maxBlocksInCache={10}
-        getRowId={(params) => String(params.data.id)}
+        getRowId={(params) => (params.data?.id != null ? String(params.data.id) : "")}
       />
     </div>
   );

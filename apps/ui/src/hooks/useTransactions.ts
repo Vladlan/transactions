@@ -5,8 +5,9 @@ import type {
   ListParams,
   CreateParams,
   UpdateParams,
+  TransactionEvent,
 } from "../types/transaction";
-import type { IDatasource, IGetRowsParams } from "ag-grid-community";
+import type { IDatasource, IGetRowsParams, GridApi } from "ag-grid-community";
 
 const PAGE_SIZE = 50;
 
@@ -15,7 +16,7 @@ export function useTransactions() {
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const filtersRef = useRef<Pick<ListParams, "account_id" | "type">>({});
-  const gridApiRef = useRef<{ purgeInfiniteCache?: () => void } | null>(null);
+  const gridApiRef = useRef<GridApi | null>(null);
 
   const buildDatasource = useCallback(
     (filters: Pick<ListParams, "account_id" | "type">): IDatasource => {
@@ -54,28 +55,62 @@ export function useTransactions() {
     gridApiRef.current?.purgeInfiniteCache?.();
   }, []);
 
-  useEffect(() => {
-    return onEvent((event) => {
-      if (event === "transaction_changed") {
+  const handleTransactionChange = useCallback(
+    (eventData: TransactionEvent) => {
+      const { action, data, id } = eventData;
+      const api = gridApiRef.current;
+      if (!api) return;
+
+      if (action === "update" && data) {
+        const rowNode = api.getRowNode(String(data.id));
+        if (rowNode) {
+          rowNode.setData(data);
+          api.flashCells({ rowNodes: [rowNode] });
+        } else {
+          // If row not in cache, we might want to refresh, but wait
+          // Maybe it's just not visible.
+        }
+      } else if (action === "create" || action === "delete") {
+        // Create and Delete still need purge because totalCount changes and indexes shift
         refreshGrid();
       }
+    },
+    [refreshGrid],
+  );
+
+  useEffect(() => {
+    return onEvent((event, data) => {
+      if (event === "transaction_changed") {
+        handleTransactionChange(data as TransactionEvent);
+      }
     });
-  }, [onEvent, refreshGrid]);
+  }, [onEvent, handleTransactionChange]);
 
   const createTransaction = useCallback(
     async (params: CreateParams) => {
-      await request("create", params as unknown as Record<string, unknown>);
+      const result = await request<Transaction>("create", params as unknown as Record<string, unknown>);
+      // We don't call handleTransactionChange here because the socket event will come back
+      // But we can call refreshGrid() to be sure if we want immediate feedback.
+      // Actually, for the requester, let's just refresh to see the new row at the top/bottom.
       refreshGrid();
+      return result;
     },
     [request, refreshGrid],
   );
 
   const updateTransaction = useCallback(
     async (params: UpdateParams) => {
-      await request("update", params as unknown as Record<string, unknown>);
-      refreshGrid();
+      const result = await request<Transaction>("update", params as unknown as Record<string, unknown>);
+      if (gridApiRef.current) {
+        const rowNode = gridApiRef.current.getRowNode(String(params.id));
+        if (rowNode) {
+          rowNode.setData(result);
+          gridApiRef.current.flashCells({ rowNodes: [rowNode] });
+        }
+      }
+      return result;
     },
-    [request, refreshGrid],
+    [request],
   );
 
   const deleteTransaction = useCallback(
