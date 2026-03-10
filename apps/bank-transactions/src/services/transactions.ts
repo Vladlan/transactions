@@ -126,11 +126,22 @@ export async function getTransaction(id: string) {
 }
 
 export async function createTransaction(data: z.infer<typeof createSchema>) {
-  const { account_id, type, amount, currency, description } = data;
+  const columns: string[] = [];
+  const placeholders: string[] = [];
+  const params: unknown[] = [];
+
+  for (const [key, value] of Object.entries(data)) {
+    if (value !== undefined) {
+      columns.push(key);
+      params.push(value);
+      placeholders.push(`$${params.length}`);
+    }
+  }
+
   const { rows } = await pool.query(
-    `INSERT INTO transactions (account_id, type, amount, currency, description)
-     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-    [account_id, type, amount, currency, description ?? null],
+    `INSERT INTO transactions (${columns.join(", ")})
+     VALUES (${placeholders.join(", ")}) RETURNING *`,
+    params,
   );
 
   return rows[0];

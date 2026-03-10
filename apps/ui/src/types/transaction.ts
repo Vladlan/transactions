@@ -63,7 +63,15 @@ export interface CreateParams {
   type: "credit" | "debit";
   amount: number;
   currency?: string;
-  description?: string;
+  description?: string | null;
+  status?: string | null;
+  category?: string | null;
+  merchant_name?: string | null;
+  payment_method?: string | null;
+  notes?: string | null;
+  reference_number?: string | null;
+  transaction_date?: string | null;
+  value_date?: string | null;
 }
 
 export interface UpdateParams {
@@ -72,5 +80,13 @@ export interface UpdateParams {
   type?: "credit" | "debit";
   amount?: number;
   currency?: string;
-  description?: string;
+  description?: string | null;
+  status?: string | null;
+  category?: string | null;
+  merchant_name?: string | null;
+  payment_method?: string | null;
+  notes?: string | null;
+  reference_number?: string | null;
+  transaction_date?: string | null;
+  value_date?: string | null;
 }
