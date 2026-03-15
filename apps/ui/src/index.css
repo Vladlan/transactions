@@ -138,3 +138,33 @@
     cursor: pointer;
   }
 }
+
+/* AG Grid skeleton shimmer for loading cells in infinite scroll */
+.ag-cell-skeleton {
+  position: relative;
+  overflow: hidden;
+}
+
+.ag-cell-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 25% 12px;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--muted) 0%,
+    var(--accent) 50%,
+    var(--muted) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

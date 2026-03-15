@@ -20,6 +20,7 @@ import type { GridReadyEvent, IDatasource } from "ag-grid-community";
 export function App() {
   const {
     error,
+    loading,
     totalCount,
     isConnected,
     buildDatasource,
@@ -198,6 +199,7 @@ export function App() {
           datasource={datasource}
           cacheBlockSize={PAGE_SIZE}
           totalCount={totalCount}
+          loading={loading}
           onUpdate={handleUpdateSubmit}
           onEdit={handleEdit}
           onSelectionChanged={setSelectedRows}

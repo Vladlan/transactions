@@ -15,12 +15,14 @@ export function useTransactions() {
   const { request, isConnected, onEvent } = useWs();
   const [error, setError] = useState<string | null>(null);
   const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
   const filtersRef = useRef<Pick<ListParams, "account_id" | "type">>({});
   const gridApiRef = useRef<GridApi | null>(null);
 
   const buildDatasource = useCallback(
     (filters: Pick<ListParams, "account_id" | "type">): IDatasource => {
       filtersRef.current = filters;
+      setLoading(true);
       return {
         getRows: async (params: IGetRowsParams) => {
           const limit = params.endRow - params.startRow;
@@ -44,6 +46,8 @@ export function useTransactions() {
           } catch (err) {
             setError(err instanceof Error ? err.message : String(err));
             params.failCallback();
+          } finally {
+            setLoading(false);
           }
         },
       };
@@ -169,6 +173,7 @@ export function useTransactions() {
 
   return {
     error,
+    loading,
     totalCount,
     isConnected,
     buildDatasource,

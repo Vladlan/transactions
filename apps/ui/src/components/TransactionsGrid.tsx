@@ -11,8 +11,7 @@ import {
   InfiniteRowModelModule,
 } from "ag-grid-community";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import type { Transaction, UpdateParams } from "@/types/transaction";
 
 ModuleRegistry.registerModules([AllCommunityModule, InfiniteRowModelModule]);
@@ -21,10 +20,33 @@ interface Props {
   datasource: IDatasource | undefined;
   cacheBlockSize: number;
   totalCount: number | null;
+  loading: boolean;
   onUpdate: (params: UpdateParams) => Promise<void>;
   onEdit: (transaction: Transaction) => void;
   onSelectionChanged: (selectedRows: Transaction[]) => void;
   onGridReady: (event: GridReadyEvent) => void;
+}
+
+function LoadingOverlay() {
+  return (
+    <div className="absolute inset-0 z-10 bg-background/80 backdrop-blur-[1px] flex items-center justify-center">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+        <span className="text-sm font-medium">Loading transactions...</span>
+      </div>
+    </div>
+  );
+}
+
+function NoRowsOverlay() {
+  return (
+    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60">
+      <div className="text-center text-muted-foreground">
+        <p className="text-sm font-medium">No transactions found</p>
+        <p className="text-xs mt-1">Try adjusting your filters or create a new transaction.</p>
+      </div>
+    </div>
+  );
 }
 
 function TypeBadge(params: ICellRendererParams<Transaction>) {
@@ -39,7 +61,7 @@ function TypeBadge(params: ICellRendererParams<Transaction>) {
 
 // No per-row actions anymore
 
-export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpdate, onSelectionChanged: onSelectionChangedProp, onGridReady }: Props) {
+export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, loading, onUpdate, onSelectionChanged: onSelectionChangedProp, onGridReady }: Props) {
   const pinnedBottomRowData = useMemo(
     () =>
       totalCount !== null
@@ -174,6 +196,9 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
       sortable: true,
       resizable: true,
       enableCellChangeFlash: true,
+      cellClassRules: {
+        "ag-cell-skeleton": (params) => !params.node.rowPinned && params.data == null,
+      },
     }),
     [],
   );
@@ -199,6 +224,9 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, onUpd
         infiniteInitialRowCount={1}
         maxBlocksInCache={10}
         getRowId={(params) => (params.data?.id != null ? String(params.data.id) : "")}
+        loading={loading}
+        loadingOverlayComponent={LoadingOverlay}
+        noRowsOverlayComponent={NoRowsOverlay}
       />
     </div>
   );
