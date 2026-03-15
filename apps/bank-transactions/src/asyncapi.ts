@@ -5,6 +5,8 @@ import {
   updateSchema,
   listQuerySchema,
   countQuerySchema,
+  findIndexQuerySchema,
+  bulkUpdateSchema,
 } from "./services/transactions.js";
 
 const transactionSchema = z.object({
@@ -14,6 +16,38 @@ const transactionSchema = z.object({
   amount: z.number().positive(),
   currency: z.string().length(3),
   description: z.string().nullable(),
+  status: z.string().max(16).nullable(),
+  category: z.string().max(64).nullable(),
+  merchant_name: z.string().max(128).nullable(),
+  merchant_category_code: z.string().max(4).nullable(),
+  reference_number: z.string().max(64).nullable(),
+  transaction_date: z.string().nullable(),
+  value_date: z.string().nullable(),
+  original_amount: z.number().nullable(),
+  original_currency: z.string().length(3).nullable(),
+  exchange_rate: z.number().nullable(),
+  fee_amount: z.number().nullable(),
+  tax_amount: z.number().nullable(),
+  payment_method: z.string().max(32).nullable(),
+  card_last4: z.string().length(4).nullable(),
+  card_network: z.string().max(32).nullable(),
+  location_city: z.string().max(64).nullable(),
+  location_country: z.string().length(3).nullable(),
+  is_recurring: z.boolean().nullable(),
+  original_description: z.string().nullable(),
+  counterparty_name: z.string().max(128).nullable(),
+  counterparty_account_number: z.string().max(64).nullable(),
+  counterparty_bank_code: z.string().max(32).nullable(),
+  balance_after: z.number().nullable(),
+  statement_period: z.string().max(16).nullable(),
+  metadata: z.any().nullable(),
+  auth_code: z.string().max(32).nullable(),
+  channel: z.string().max(16).nullable(),
+  risk_score: z.number().nullable(),
+  labels: z.array(z.string()).nullable(),
+  notes: z.string().nullable(),
+  parent_transaction_id: z.number().int().nullable(),
+  reconciliation_id: z.string().max(64).nullable(),
   created_at: z.string().datetime(),
   updated_at: z.string().datetime(),
 });
@@ -33,6 +67,12 @@ const listParams = z.object({
   id: z.string().or(z.number()).optional().describe("Correlation ID echoed in the response"),
   action: z.literal("list"),
   params: listQuerySchema.optional(),
+});
+
+const findIndexParams = z.object({
+  id: z.string().or(z.number()).optional().describe("Correlation ID echoed in the response"),
+  action: z.literal("findIndex"),
+  params: findIndexQuerySchema,
 });
 
 const getParams = z.object({
@@ -55,6 +95,12 @@ const updateParams = z.object({
   }),
 });
 
+const bulkUpdateParams = z.object({
+  id: z.string().or(z.number()).optional(),
+  action: z.literal("bulkUpdate"),
+  params: bulkUpdateSchema,
+});
+
 const deleteParams = z.object({
   id: z.string().or(z.number()).optional(),
   action: z.literal("delete"),
@@ -74,7 +120,7 @@ const errorResponse = z.object({
 const transactionChangedEvent = z.object({
   event: z.literal("transaction_changed"),
   data: z.object({
-    action: z.enum(["create", "update", "delete"]).describe("The mutation that triggered the broadcast"),
+    action: z.enum(["create", "update", "bulk_update", "delete"]).describe("The mutation that triggered the broadcast"),
   }),
 });
 
@@ -99,9 +145,11 @@ export const asyncApiDocument = {
       messages: {
         countRequest: { $ref: "#/components/messages/countRequest" },
         listRequest: { $ref: "#/components/messages/listRequest" },
+        findIndexRequest: { $ref: "#/components/messages/findIndexRequest" },
         getRequest: { $ref: "#/components/messages/getRequest" },
         createRequest: { $ref: "#/components/messages/createRequest" },
         updateRequest: { $ref: "#/components/messages/updateRequest" },
+        bulkUpdateRequest: { $ref: "#/components/messages/bulkUpdateRequest" },
         deleteRequest: { $ref: "#/components/messages/deleteRequest" },
         successResponse: { $ref: "#/components/messages/successResponse" },
         errorResponse: { $ref: "#/components/messages/errorResponse" },
@@ -122,6 +170,12 @@ export const asyncApiDocument = {
       summary: "List transactions with optional filters",
       messages: [{ $ref: "#/channels/transactions/messages/listRequest" }],
     },
+    findRowIndex: {
+      action: "send",
+      channel: { $ref: "#/channels/transactions" },
+      summary: "Find the row index of a transaction in the current sort order",
+      messages: [{ $ref: "#/channels/transactions/messages/findIndexRequest" }],
+    },
     getTransaction: {
       action: "send",
       channel: { $ref: "#/channels/transactions" },
@@ -139,6 +193,12 @@ export const asyncApiDocument = {
       channel: { $ref: "#/channels/transactions" },
       summary: "Update an existing transaction",
       messages: [{ $ref: "#/channels/transactions/messages/updateRequest" }],
+    },
+    bulkUpdateTransactions: {
+      action: "send",
+      channel: { $ref: "#/channels/transactions" },
+      summary: "Update multiple transactions matching a filter",
+      messages: [{ $ref: "#/channels/transactions/messages/bulkUpdateRequest" }],
     },
     deleteTransaction: {
       action: "send",
@@ -161,7 +221,7 @@ export const asyncApiDocument = {
     receiveTransactionChanged: {
       action: "receive",
       channel: { $ref: "#/channels/transactions" },
-      summary: "Broadcast sent to all other clients when a transaction is created, updated, or deleted",
+      summary: "Broadcast sent to all other clients when a transaction is created, updated, bulk-updated, or deleted",
       messages: [{ $ref: "#/channels/transactions/messages/transactionChanged" }],
     },
   },
@@ -179,6 +239,13 @@ export const asyncApiDocument = {
         payload: {
           schemaFormat: "application/schema+json;version=draft-07",
           schema: jsonSchema(listParams),
+        },
+      },
+      findIndexRequest: {
+        summary: "Find row index of a transaction",
+        payload: {
+          schemaFormat: "application/schema+json;version=draft-07",
+          schema: jsonSchema(findIndexParams),
         },
       },
       getRequest: {
@@ -200,6 +267,13 @@ export const asyncApiDocument = {
         payload: {
           schemaFormat: "application/schema+json;version=draft-07",
           schema: jsonSchema(updateParams),
+        },
+      },
+      bulkUpdateRequest: {
+        summary: "Bulk update transactions",
+        payload: {
+          schemaFormat: "application/schema+json;version=draft-07",
+          schema: jsonSchema(bulkUpdateParams),
         },
       },
       deleteRequest: {
