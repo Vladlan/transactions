@@ -225,6 +225,50 @@ export async function updateTransaction(id: string, fields: z.infer<typeof updat
   return rows[0];
 }
 
+export const bulkUpdateFilterSchema = z.object({
+  account_id: z.string().optional(),
+  type: z.enum(["credit", "debit"]).optional(),
+});
+
+export const bulkUpdateSchema = z.object({
+  filter: bulkUpdateFilterSchema,
+  fields: updateSchema,
+});
+
+export async function bulkUpdateTransactions(
+  filter: z.infer<typeof bulkUpdateFilterSchema>,
+  fields: z.infer<typeof updateSchema>,
+): Promise<number> {
+  const setClauses: string[] = [];
+  const params: unknown[] = [];
+
+  for (const [key, value] of Object.entries(fields)) {
+    params.push(value);
+    setClauses.push(`${key} = $${params.length}`);
+  }
+  params.push(new Date().toISOString());
+  setClauses.push(`updated_at = $${params.length}`);
+
+  const conditions: string[] = [];
+  if (filter.account_id) {
+    params.push(filter.account_id);
+    conditions.push(`account_id = $${params.length}`);
+  }
+  if (filter.type) {
+    params.push(filter.type);
+    conditions.push(`type = $${params.length}`);
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+
+  const { rowCount } = await pool.query(
+    `UPDATE transactions SET ${setClauses.join(", ")} ${where}`,
+    params,
+  );
+
+  return rowCount ?? 0;
+}
+
 export async function deleteTransaction(id: string) {
   const { rowCount } = await pool.query(
     "DELETE FROM transactions WHERE id = $1",

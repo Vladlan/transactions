@@ -7,19 +7,20 @@ import {
   listQuerySchema,
   countQuerySchema,
   findIndexQuerySchema,
+  bulkUpdateSchema,
   listTransactions,
   countTransactions,
   findRowIndex,
   getTransaction,
-
   createTransaction,
   updateTransaction,
+  bulkUpdateTransactions,
   deleteTransaction,
 } from "../services/transactions.js";
 
 const messageSchema = z.object({
   id: z.string().or(z.number()).optional(),
-  action: z.enum(["list", "count", "findIndex", "get", "create", "update", "delete"]),
+  action: z.enum(["list", "count", "findIndex", "get", "create", "update", "bulkUpdate", "delete"]),
 
   params: z.record(z.unknown()).optional(),
 });
@@ -133,6 +134,18 @@ async function handleMessage(ws: WebSocket, raw: string) {
         }
         send(ws, id, { data: result });
         broadcast(ws, "transaction_changed", { action: "update", data: result });
+        return;
+      }
+
+      case "bulkUpdate": {
+        const parsed = bulkUpdateSchema.safeParse(params);
+        if (!parsed.success) {
+          send(ws, id, { error: parsed.error.flatten() });
+          return;
+        }
+        const affectedCount = await bulkUpdateTransactions(parsed.data.filter, parsed.data.fields);
+        send(ws, id, { data: { affectedCount } });
+        broadcast(ws, "transaction_changed", { action: "bulk_update", affectedCount });
         return;
       }
 
