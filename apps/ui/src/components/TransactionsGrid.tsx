@@ -51,6 +51,7 @@ function NoRowsOverlay() {
 
 function TypeBadge(params: ICellRendererParams<Transaction>) {
   if (params.node.rowPinned) return null;
+  if (!params.value) return null;
   const val = params.value as string;
   return (
     <Badge variant={val === "credit" ? "default" : "secondary"}>
@@ -102,7 +103,7 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, loadi
           if (params.node.rowPinned) {
             return <span className="font-medium">{params.value}</span>;
           }
-          return params.value;
+          return params.value != null ? Number(params.value).toLocaleString() : params.value;
         },
         pinned: "left",
         sort: "desc",
