@@ -67,7 +67,13 @@ npm install
 npm run db:migrate
 ```
 
-4. Start the dev server (with hot reload):
+4. (Optional) Seed the database with 10M sample transactions:
+
+```bash
+npm run db:seed
+```
+
+5. Start the dev server (with hot reload):
 
 ```bash
 npm run dev
@@ -109,22 +115,67 @@ GET /health
 | `type`           | string | —       | Filter by type (credit/debit)                                               |
 | `limit`          | number | 20      | Results per page (1–100)                                                    |
 | `offset`         | number | 0       | Pagination offset                                                           |
-| `sort_field`     | string | —       | Column to sort by (`id`, `account_id`, `type`, `amount`, `currency`, `description`, `created_at`) |
-| `sort_direction` | string | asc     | Sort direction (`asc` or `desc`)                                            |
+| `sort_field`     | string | —       | Column to sort by (see [Sortable columns](#sortable-columns) below)         |
+| `sort_direction` | string | asc     | Sort direction (`asc` or `desc`). When `sort_field` is omitted, default order is `id DESC` |
 
-#### Create Transaction (POST /transactions)
+#### Sortable columns
+
+`id`, `account_id`, `type`, `amount`, `currency`, `description`, `created_at`, `status`, `category`, `merchant_name`, `transaction_date`, `value_date`, `original_amount`, `fee_amount`, `tax_amount`, `payment_method`, `location_city`, `location_country`, `is_recurring`, `counterparty_name`, `balance_after`, `risk_score`
+
+#### Create / Update Transaction
+
+Minimal example:
 
 ```json
 {
   "account_id": "ACC-001",
   "type": "credit",
-  "amount": 150.00,
-  "currency": "USD",
-  "description": "Monthly deposit"
+  "amount": 150.00
 }
 ```
 
-Required fields: `account_id`, `type`, `amount`. Optional: `currency` (default: USD), `description`.
+**Required fields:** `account_id`, `type`, `amount`.
+
+**Optional fields** (defaults shown where applicable):
+
+| Field                        | Type     | Default | Notes                        |
+| ---------------------------- | -------- | ------- | ---------------------------- |
+| `currency`                   | string   | `USD`   | ISO 4217, 3 characters       |
+| `description`                | string   | —       |                              |
+| `status`                     | string   | —       | e.g. `pending`, `completed`  |
+| `category`                   | string   | —       | e.g. `Shopping`, `Travel`    |
+| `merchant_name`              | string   | —       |                              |
+| `merchant_category_code`     | string   | —       | MCC, max 4 chars             |
+| `reference_number`           | string   | —       |                              |
+| `transaction_date`           | string   | —       | ISO date                     |
+| `value_date`                 | string   | —       | ISO date                     |
+| `original_amount`            | number   | —       | Pre-conversion amount        |
+| `original_currency`          | string   | —       | ISO 4217, 3 characters       |
+| `exchange_rate`              | number   | —       |                              |
+| `fee_amount`                 | number   | —       |                              |
+| `tax_amount`                 | number   | —       |                              |
+| `payment_method`             | string   | —       | e.g. `credit_card`, `atm`   |
+| `card_last4`                 | string   | —       | Exactly 4 chars              |
+| `card_network`               | string   | —       | e.g. `VISA`, `MASTERCARD`   |
+| `location_city`              | string   | —       |                              |
+| `location_country`           | string   | —       | ISO 3166, 3 characters       |
+| `is_recurring`               | boolean  | —       |                              |
+| `original_description`       | string   | —       |                              |
+| `counterparty_name`          | string   | —       |                              |
+| `counterparty_account_number`| string   | —       |                              |
+| `counterparty_bank_code`     | string   | —       |                              |
+| `balance_after`              | number   | —       |                              |
+| `statement_period`           | string   | —       | e.g. `2025-03`              |
+| `metadata`                   | object   | —       | Arbitrary JSON               |
+| `auth_code`                  | string   | —       |                              |
+| `channel`                    | string   | —       | e.g. `online`, `mobile`     |
+| `risk_score`                 | number   | —       |                              |
+| `labels`                     | string[] | —       |                              |
+| `notes`                      | string   | —       |                              |
+| `parent_transaction_id`      | integer  | —       |                              |
+| `reconciliation_id`          | string   | —       |                              |
+
+For **PUT /transactions/:id**, all fields are optional (at least one must be provided).
 
 ### WebSocket API
 
@@ -134,22 +185,26 @@ Connect to `/ws` and send JSON messages. Each request includes an `action` and o
 { "id": "correlation-id", "action": "list", "params": { "limit": 50, "offset": 0 } }
 ```
 
-| Action   | Description                | Params                                |
-| -------- | -------------------------- | ------------------------------------- |
-| `list`   | List transactions          | Same as GET query params              |
-| `count`  | Count transactions         | `account_id?`, `type?`                |
-| `get`    | Get transaction by ID      | `id`                                  |
-| `create` | Create a transaction       | Same as POST body                     |
-| `update` | Update a transaction       | `id` + partial transaction fields     |
-| `delete` | Delete a transaction       | `id`                                  |
+| Action       | Description                          | Params                                                  |
+| ------------ | ------------------------------------ | ------------------------------------------------------- |
+| `list`       | List transactions                    | Same as GET query params                                |
+| `count`      | Count transactions                   | `account_id?`, `type?`                                  |
+| `findIndex`  | Find row index of a transaction      | Same as list query params + `id` (required)             |
+| `get`        | Get transaction by ID                | `id`                                                    |
+| `create`     | Create a transaction                 | Same as POST body                                       |
+| `update`     | Update a transaction                 | `id` + partial transaction fields                       |
+| `bulkUpdate` | Update multiple transactions at once | `filter` (`account_id?`, `type?`) + `fields` (partial)  |
+| `delete`     | Delete a transaction                 | `id`                                                    |
 
 #### Live updates
 
-When a transaction is created, updated, or deleted, the server broadcasts a `transaction_changed` event to all other connected clients:
+When a transaction is created, updated, bulk-updated, or deleted, the server broadcasts a `transaction_changed` event to all other connected clients:
 
 ```json
 { "event": "transaction_changed", "data": { "action": "create" } }
 ```
+
+Possible `action` values: `create`, `update`, `bulk_update`, `delete`.
 
 ### API Documentation
 
@@ -171,5 +226,6 @@ src/
 │   └── transactions.ts   # WebSocket handler & broadcasting
 └── db/
     ├── pool.ts           # PostgreSQL connection pool
-    └── migrate.ts        # Database schema migration
+    ├── migrate.ts        # Database schema migration
+    └── seed.ts           # Database seeding (10M sample rows)
 ```
