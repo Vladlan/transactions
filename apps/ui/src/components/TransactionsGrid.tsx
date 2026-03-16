@@ -205,7 +205,7 @@ export function TransactionsGrid({ datasource, cacheBlockSize, totalCount, loadi
   );
 
   return (
-    <div className="ag-theme-alpine w-full" style={{ height: "calc(100vh - 220px)", minHeight: 400 }}>
+    <div className="ag-theme-alpine w-full" style={{ height: "calc(100vh - 17.5rem)", minHeight: "18.75rem" }}>
       <AgGridReact<Transaction>
         rowModelType="infinite"
         datasource={datasource}

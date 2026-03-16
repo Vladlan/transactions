@@ -23,7 +23,7 @@ import type { Transaction, CreateParams, UpdateParams } from "@/types/transactio
 const Textarea = ({ className, ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) => (
   <textarea
     className={cn(
-      "flex min-h-[80px] w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
+      "flex min-h-20 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-colors outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30",
       className
     )}
     {...props}
@@ -214,7 +214,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, selectedTra
         <form onSubmit={handleSubmit}>
           <ScrollArea className="max-h-[70vh] px-1">
             <div className="grid gap-6 py-4 mr-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   {renderLabel("account_id", "Account ID")}
                   <Input
@@ -239,7 +239,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, selectedTra
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="grid gap-2">
                   {renderLabel("amount", "Amount")}
                   <Input
@@ -280,7 +280,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, selectedTra
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   {renderLabel("category", "Category")}
                   <Input
@@ -301,7 +301,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, selectedTra
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   {renderLabel("transaction_date", "Transaction Date")}
                   <Input
@@ -322,7 +322,7 @@ export function TransactionDialog({ open, onOpenChange, transaction, selectedTra
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   {renderLabel("payment_method", "Payment Method")}
                   <Input
