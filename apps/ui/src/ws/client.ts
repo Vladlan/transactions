@@ -74,7 +74,7 @@ export class WsClient {
       const timer = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error("Request timeout"));
-      }, 10000);
+      }, 10_000);
 
       this.pending.set(id, {
         resolve: resolve as (data: unknown) => void,

@@ -14,8 +14,6 @@ services:
     build:
       context: ../../
       dockerfile: apps/bank-transactions/Dockerfile
-    ports:
-      - "3001:3001"
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
@@ -25,6 +23,30 @@ services:
       PORT: 3001
     depends_on:
       - postgres
+
+  nginx:
+    build:
+      context: ../../
+      dockerfile: apps/ui/Dockerfile
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - certs:/etc/nginx/certs
+    depends_on:
+      - bank-transactions
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        apk add --no-cache openssl
+        mkdir -p /etc/nginx/certs
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+          -keyout /etc/nginx/certs/selfsigned.key \
+          -out /etc/nginx/certs/selfsigned.crt \
+          -subj "/CN=localhost"
+        nginx -g "daemon off;"
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -38,3 +60,4 @@ services:
 
 volumes:
   pgdata:
+  certs:
